@@ -2,31 +2,55 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"time"
 )
 
 func main() {
+
+	defer func() {
+		fatal := recover()
+		if fatal != nil {
+			fmt.Println("程序崩溃，错误信息为:", fatal)
+			fmt.Println("按回车退出")
+			fmt.Scanln()
+		}
+	}()
 	filepath := "./data.json"
 	data, err := ioutil.ReadFile(filepath)
 	if err != nil {
+		fmt.Println("读文件错误")
+		fmt.Println("按回车退出")
+		fmt.Scanln()
 		return
 	}
 	var ob interface{}
 	err = json.Unmarshal(data, &ob)
 	if err != nil {
+		fmt.Println("json反格式化失败")
+		fmt.Println("按回车退出")
+		fmt.Scanln()
 		return
 	}
 	es, er := SetType(ob)
 	if er != nil {
+		fmt.Println("格式转义错误")
+		fmt.Println("按回车退出")
+		fmt.Scanln()
 		return
 	}
 	esData, err := json.Marshal(es)
 	if err != nil {
+		fmt.Println("json格式化失败")
+		fmt.Println("按回车退出")
+		fmt.Scanln()
 		return
 	}
 	ioutil.WriteFile("./target.json", esData, 0644)
+	fmt.Println("按回车退出")
+	fmt.Scanln()
 }
 
 //SetType ...
@@ -54,6 +78,10 @@ func SetType(value interface{}) (es *EsValue, err interface{}) {
 		{
 			return NewEsText(), err
 		}
+	case bool:
+		{
+			return NewEsBoolean(), err
+		}
 	case map[string]interface{}:
 		{
 			obmap, ok := value.(map[string]interface{})
@@ -73,7 +101,12 @@ func SetType(value interface{}) (es *EsValue, err interface{}) {
 		}
 	case []interface{}:
 		{
-			obmap, ok := value.([]interface{})[0].(map[string]interface{})
+			arr := value.([]interface{})
+			if len(arr) == 0 {
+				// err = "该数组无数据"
+				return NewEsError(), err
+			}
+			obmap, ok := arr[0].(map[string]interface{})
 			kv := make(EsValue)
 			if ok {
 				for k, v := range obmap {
@@ -109,6 +142,13 @@ func NewEsError() *EsValue {
 func NewEsLong() *EsValue {
 	ev := make(EsValue)
 	ev["type"] = "long"
+	return &ev
+}
+
+// NewEsBoolean ... 获取一个EsBoolean
+func NewEsBoolean() *EsValue {
+	ev := make(EsValue)
+	ev["type"] = "boolean"
 	return &ev
 }
 
